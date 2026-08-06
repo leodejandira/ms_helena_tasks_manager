@@ -23,5 +23,4 @@ COPY . .
 # Porta padrao que a aplicacao vai expor
 EXPOSE 8000
 
-# Comando para iniciar a API no ambiente de producao/container
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]
