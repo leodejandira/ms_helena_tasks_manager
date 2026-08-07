@@ -3,6 +3,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from config.database import db
 from routes.item_routes import router as item_router
 
+from fastapi.middleware.cors import CORSMiddleware
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://leodejandira.github.io"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app = FastAPI(
     title="MS Helena Tasks Manager",
     description="Backend FastAPI com Supabase estruturado em MCR e SRP"
