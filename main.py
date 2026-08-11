@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routes.item_routes import router as item_router
+from routes.daily_task_routes import router as daily_task_router
 
 
 app = FastAPI(
@@ -22,6 +23,7 @@ app.add_middleware(
 
 
 app.include_router(item_router)
+app.include_router(daily_task_router)
 
 
 @app.get("/")

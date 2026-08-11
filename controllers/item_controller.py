@@ -135,6 +135,14 @@ class ItemController:
 
 
 
+    # Status finais que precisam manter items.daily_tasks sincronizados.
+    # Roteados pela RPC sync_item_status (ver migration de Tarefas de Hoje),
+    # que atualiza items.status e, se existir um registro pendente/em
+    # execução em daily_tasks para hoje, sincroniza-o também, na mesma
+    # transação do Postgres.
+    _FINAL_STATUSES_SYNCED = ("Concluída", "Cancelado")
+
+
     def update_item(
         self,
         item_id: int,
@@ -167,22 +175,66 @@ class ItemController:
             )
 
 
-        response = (
-            self.db
-            .table(self.table_name)
-            .update(data)
-            .eq("id", item_id)
-            .execute()
-        )
+        new_status = data.pop("status", None)
+        result_row = None
+
+        if new_status in self._FINAL_STATUSES_SYNCED:
+            rpc_response = (
+                self.db
+                .rpc(
+                    "sync_item_status",
+                    {
+                        "p_item_id": item_id,
+                        "p_new_status": new_status
+                    }
+                )
+                .execute()
+            )
+
+            rpc_data = rpc_response.data
+            if isinstance(rpc_data, list):
+                rpc_data = rpc_data[0] if rpc_data else None
+
+            if not rpc_data:
+                raise Exception(
+                    f"Tarefa {item_id} não encontrada"
+                )
+
+            result_row = rpc_data
+
+        elif new_status is not None:
+            # Status não-final (ex.: "Preparada" -> "Em andamento" pelo
+            # timer): segue o caminho de update normal, sem envolver
+            # daily_tasks.
+            data["status"] = new_status
 
 
-        if not response.data:
-            raise Exception(
-                f"Tarefa {item_id} não encontrada"
+        if data:
+            response = (
+                self.db
+                .table(self.table_name)
+                .update(data)
+                .eq("id", item_id)
+                .execute()
             )
 
 
-        return response.data[0]
+            if not response.data:
+                raise Exception(
+                    f"Tarefa {item_id} não encontrada"
+                )
+
+
+            result_row = response.data[0]
+
+
+        if result_row is None:
+            # Nenhum campo restante para atualizar (ex.: PUT só com status
+            # final, já resolvido inteiramente pela RPC acima).
+            result_row = self.get_item(item_id)
+
+
+        return result_row
 
 
 
@@ -191,13 +243,26 @@ class ItemController:
         item_id: int
     ):
 
-        response = (
-            self.db
-            .table(self.table_name)
-            .delete()
-            .eq("id", item_id)
-            .execute()
-        )
+        try:
+            response = (
+                self.db
+                .table(self.table_name)
+                .delete()
+                .eq("id", item_id)
+                .execute()
+            )
+        except Exception as e:
+            # daily_tasks.item_id referencia items(id) ON DELETE RESTRICT:
+            # se a tarefa já tiver histórico em Tarefas de Hoje, o Postgres
+            # bloqueia a exclusão. Traduzimos o erro cru de FK numa mensagem
+            # compreensível, sem alterar a regra em si.
+            msg = str(e)
+            if "foreign key" in msg.lower() or "23503" in msg:
+                raise Exception(
+                    "Não é possível excluir: esta tarefa possui histórico "
+                    "em Tarefas de Hoje."
+                )
+            raise
 
 
         if not response.data:
