@@ -1,7 +1,16 @@
+# Environment / secrets
 .env
-__pycache__/
-*.pyc
+.env.*
+!.env.example
+
+# Python
 .venv/
 venv/
-.vscode/
-.idea/
+__pycache__/
+*.py[cod]
+
+# OS
+.DS_Store
+
+# Archives
+*.zip
