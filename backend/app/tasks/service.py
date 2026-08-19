@@ -1,13 +1,12 @@
 import json
-from datetime import datetime, date as date_type
+from datetime import date as date_type
 from typing import Optional, List
-from zoneinfo import ZoneInfo
 from fastapi import HTTPException
 
 from app.database import db
+from app.timezone_utils import now_utc_iso, today_local_str
 
 DONE_STATUSES = ("concluida", "cancelada")
-LOCAL_TZ = ZoneInfo("America/Sao_Paulo")
 
 
 # ---------------------------------------------------------------------
@@ -15,11 +14,11 @@ LOCAL_TZ = ZoneInfo("America/Sao_Paulo")
 # ---------------------------------------------------------------------
 
 def _now_iso() -> str:
-    return datetime.utcnow().isoformat()
+    return now_utc_iso()
 
 
 def _today_local_str() -> str:
-    return datetime.now(LOCAL_TZ).date().isoformat()
+    return today_local_str()
 
 
 def _remove_from_today_board(task_id: int) -> None:

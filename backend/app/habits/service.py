@@ -1,12 +1,12 @@
-from datetime import datetime
 from typing import Optional
 from fastapi import HTTPException
 
 from app.database import db
+from app.timezone_utils import now_utc_iso
 
 
 def _now_iso() -> str:
-    return datetime.utcnow().isoformat()
+    return now_utc_iso()
 
 
 def list_habits() -> list:

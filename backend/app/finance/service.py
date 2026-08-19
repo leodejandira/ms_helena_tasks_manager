@@ -1,12 +1,12 @@
-from datetime import datetime, date as date_type
 from typing import Optional
 from fastapi import HTTPException
 
 from app.database import db
+from app.timezone_utils import now_utc_iso, today_local
 
 
 def _now_iso() -> str:
-    return datetime.utcnow().isoformat()
+    return now_utc_iso()
 
 
 def _get_expense_or_404(expense_id: int) -> dict:
@@ -25,7 +25,7 @@ def _signed_amount(expense_type: str, amount: float) -> float:
 
 
 def create_expense(payload: dict) -> dict:
-    expense_date = payload.get("date") or date_type.today()
+    expense_date = payload.get("date") or today_local()
     row = {
         "name": payload["name"],
         "type": payload["type"],
